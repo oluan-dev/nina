@@ -1,0 +1,21 @@
+# dependências
+node_modules/
+venv*/
+.venv/
+__pycache__/
+*.pyc
+
+# configuração e estado local (copie config.example.json para config.json)
+config.json
+nina.lock
+diario/
+memoria/
+
+# áudio e modelos gerados ou baixados
+bordoes/
+modelos/
+*.wav
+*.mp3
+*.onnx
+*.log
+.claude/

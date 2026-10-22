@@ -1,0 +1,4 @@
+# Pipecat no commit em que a Nina foi testada (mesma API usada em conversa/).
+pipecat-ai[silero,whisper,local] @ git+https://github.com/pipecat-ai/pipecat@c38f3184e6e22dc11c5d0ad684b7c941cdd643c9
+edge-tts>=7.3
+loguru>=0.7

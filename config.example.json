@@ -1,0 +1,14 @@
+{
+  "whisper_modelo": "large-v3-turbo",
+  "whisper_device": "cuda",
+  "whisper_compute": "float16",
+  "nomes": "Nina, Claude, Whisper, Pipecat.",
+  "voz": "pt-BR-FranciscaNeural",
+  "voz_velocidade": "+18%",
+  "canteiro_extensao": "oluan-dev.canteiro",
+  "legenda": "balao",
+  "legenda_tamanho": 20,
+  "legenda_altura": 140,
+  "cerebro_modelo": "sonnet",
+  "pastas_extras": []
+}

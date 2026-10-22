@@ -1,0 +1,217 @@
+<!doctype html>
+<meta charset="utf8">
+<title>Nina</title>
+<!--
+  O rosto da Nina. Abre em http://localhost:4790/rosto
+
+  Esta pagina nao tem relogio, e isso e o conserto principal. A versao anterior
+  recebia uma agenda com hora de inicio e tocava sozinha; funcionava na primeira
+  frase e desandava na segunda, porque o Pipecat gera a frase seguinte enquanto
+  a anterior ainda esta tocando - era o "so funciona por 5 segundos".
+
+  Agora quem decide e o som: nina/boca.py fica depois da saida de audio no
+  pipeline e escreve, em diario/boca.json, a boca do som que ACABOU DE TOCAR.
+  Aqui so se le e se mostra. Nao ha o que calibrar e nao ha como desencontrar.
+
+  O rosto e uma imagem so (arte/rosto.png). Por cima ficam as cinco bocas
+  (arte/boca-*.png), empilhadas e ja carregadas - trocar e acender uma e apagar
+  as outras, entao nada carrega no meio da fala e nao pisca.
+
+  As cinco foram recortadas da folha usando o NUCLEO DA TESTA como marca de
+  registro: e o ponto que nao se mexe quando o queixo cai. Trocando a arte,
+  recorte pelo mesmo criterio e ajuste a proporcao de #cara e as % de .boca.
+-->
+<style>
+  :root {
+    --linha:  #5fdcff;
+    --fraca:  #17596f;
+    --brilho: #00e5ff;
+  }
+  * { box-sizing: border-box; }
+  html, body { height: 100%; margin: 0; }
+  body {
+    /* Medido nos cantos de arte/rosto.png: a pagina some na imagem. */
+    background: #010b15;
+    display: flex;
+    flex-direction: column;
+    overflow: hidden;
+    font: 11px/1.5 ui-monospace, "Cascadia Code", Consolas, monospace;
+    color: var(--fraca);
+    letter-spacing: .1em;
+  }
+
+  /* Flex, nao grid: num grid com place-items:center a linha fica automatica,
+     e "height:100%" do filho nao tem contra o que resolver. */
+  #palco {
+    position: relative;
+    flex: 1; min-height: 0;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: 10px;
+  }
+
+  #cara {
+    position: relative;
+    height: 100%;
+    aspect-ratio: 400 / 669;     /* de arte/rosto.png */
+    max-width: 100%;
+  }
+  #rosto { display: block; width: 100%; height: 100%; }
+
+  /* A caixa da boca, em % do rosto: x 104/400, y 368/669, 200x140. */
+  .boca {
+    position: absolute; display: block;
+    left: 26%;
+    top: 55.0075%;
+    width: 50%;
+    height: 20.927%;
+    opacity: 0;
+    transition: opacity .055s linear;
+    /* A borda do recorte desaparece: o miolo cobre, as beiradas somem. */
+    -webkit-mask-image: radial-gradient(ellipse 72% 70% at 50% 50%,
+                        #000 62%, transparent 100%);
+            mask-image: radial-gradient(ellipse 72% 70% at 50% 50%,
+                        #000 62%, transparent 100%);
+  }
+  .boca.acesa { opacity: 1; }
+
+  /* O brilho de tras respira junto com a voz. */
+  #aura {
+    position: absolute;
+    top: 50%; left: 50%;
+    width: 54vmin; height: 54vmin;
+    translate: -50% -50%;
+    border-radius: 50%;
+    background: radial-gradient(circle, rgba(0,229,255,.20), transparent 68%);
+    opacity: 0;
+    pointer-events: none;
+    transition: opacity .09s linear;
+  }
+
+  /* ===== a faixa de leitura ===== */
+  #faixa {
+    flex: 0 0 auto;
+    display: grid;
+    grid-template-columns: auto 1fr auto;
+    align-items: center;
+    gap: 18px;
+    padding: 10px 20px 14px;
+    border-top: 1px solid #0d2032;
+    text-transform: uppercase;
+  }
+  #quem { display: flex; align-items: center; gap: 8px; }
+  #luz {
+    width: 6px; height: 6px; border-radius: 50%;
+    background: var(--fraca);
+    transition: background .2s ease, box-shadow .2s ease;
+  }
+  #luz.viva    { background: #39d98a; box-shadow: 0 0 9px #39d98a; }
+  #luz.falando { background: var(--brilho); box-shadow: 0 0 12px var(--brilho); }
+
+  /* A voz dela nos ultimos tres segundos. Se isto mexe, a boca esta no som. */
+  #onda {
+    display: flex; align-items: flex-end; gap: 1px;
+    height: 26px;
+    border-left: 1px solid #0d2032;
+    border-right: 1px solid #0d2032;
+    padding: 0 4px;
+    overflow: hidden;
+  }
+  #onda i {
+    flex: 1 1 0; min-width: 0;
+    background: #1d6d8a;
+    border-radius: 1px 1px 0 0;
+  }
+  #onda i.agora { background: var(--brilho); box-shadow: 0 0 6px var(--brilho); }
+
+  #forma {
+    min-width: 7ch; text-align: right;
+    color: var(--linha); font-size: 15px; letter-spacing: .16em;
+  }
+  /* /rosto?canto: só o rosto, sem
+     a faixa de diagnóstico e sem margem. */
+  html.canto #faixa { display: none; }
+  html.canto #palco { padding: 0; }
+</style>
+<script>if (location.search.includes("canto")) document.documentElement.classList.add("canto");</script>
+
+<div id="palco">
+  <div id="aura"></div>
+  <div id="cara">
+    <img id="rosto" src="/arte/rosto.png" alt="o rosto da Nina">
+    <img class="boca acesa" data-forma="M"  src="/arte/boca-M.png"  alt="">
+    <img class="boca"       data-forma="S"  src="/arte/boca-S.png"  alt="">
+    <img class="boca"       data-forma="AH" src="/arte/boca-AH.png" alt="">
+    <img class="boca"       data-forma="E"  src="/arte/boca-E.png"  alt="">
+    <img class="boca"       data-forma="O"  src="/arte/boca-O.png"  alt="">
+  </div>
+</div>
+
+<div id="faixa">
+  <div id="quem"><span id="luz"></span><span id="texto">parada</span></div>
+  <div id="onda"></div>
+  <div id="forma">—</div>
+</div>
+
+<script>
+const SENHA = "__SENHA_DA_SESSAO__";
+const RITMO = 33;          // ms entre leituras; nina/boca.py escreve no mesmo passo
+const BARRAS = 90;         // ~3 s de voz na faixa
+
+const aura   = document.getElementById("aura");
+const luz    = document.getElementById("luz");
+const texto  = document.getElementById("texto");
+const rotulo = document.getElementById("forma");
+
+const bocas = {};
+document.querySelectorAll(".boca").forEach(function (n) { bocas[n.dataset.forma] = n; });
+
+// A faixa da voz: barras fixas que vao sendo reescritas, da esquerda para a
+// direita. Mais barato que criar e destruir elemento 30 vezes por segundo.
+const onda = document.getElementById("onda");
+const barras = [];
+for (let i = 0; i < BARRAS; i++) {
+  const n = document.createElement("i");
+  n.style.height = "1px";
+  onda.appendChild(n);
+  barras.push(n);
+}
+let ponta = 0;
+
+let atual = "M";
+
+async function ler() {
+  let forma = "M", abertura = 0, viva = true;
+  try {
+    const r = await fetch("/api/boca", { headers: { "X-Nina": SENHA } });
+    const d = await r.json();
+    forma = d.forma || "M";
+    abertura = d.abertura || 0;
+  } catch (erro) {
+    viva = false;              // servidor caiu, ou json pego no meio da escrita
+  }
+
+  if (forma !== atual) {       // so mexe no DOM quando muda de verdade
+    bocas[atual].classList.remove("acesa");
+    bocas[forma].classList.add("acesa");
+    atual = forma;
+  }
+
+  const falando = forma !== "M" || abertura > 0.05;
+  aura.style.opacity = falando ? (0.25 + abertura * 0.75).toFixed(2) : 0;
+
+  const b = barras[ponta];
+  b.style.height = Math.max(1, Math.round(abertura * 26)) + "px";
+  barras.forEach(function (n) { n.classList.remove("agora"); });
+  b.classList.add("agora");
+  ponta = (ponta + 1) % BARRAS;
+
+  luz.className = !viva ? "" : falando ? "falando" : "viva";
+  texto.textContent = !viva ? "servidor fora do ar" : falando ? "falando" : "ouvindo";
+  rotulo.textContent = falando ? forma : "—";
+}
+
+setInterval(ler, RITMO);
+ler();
+</script>
